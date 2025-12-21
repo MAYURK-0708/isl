@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Sign Language Recognition</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤟 Indian Sign Language Recognition</h1>
+            <p class="subtitle">Translate sign language gestures in real-time or upload a video</p>
+        </header>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('live')" id="liveBtn">
+                📹 Live Interaction
+            </button>
+            <button class="mode-btn" onclick="switchMode('upload')" id="uploadBtn">
+                📁 Upload Video
+            </button>
+        </div>
+
+        <!-- Live Interaction Mode -->
+        <div id="liveMode" class="mode-content active">
+            <div class="permission-notice">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>Your browser will ask for camera permission when you click "Start Camera". Please click "Allow" to use the live interaction feature.</span>
+            </div>
+            
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="canvas" style="display:none;"></canvas>
+                <div class="video-overlay" id="videoOverlay">
+                    <div class="recording-indicator" id="recordingIndicator" style="display:none;">
+                        <span class="recording-dot"></span>
+                        Recording... <span id="recordingTime">0s</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="startWebcam()" id="startBtn">
+                    Start Camera
+                </button>
+                <button class="btn btn-danger" onclick="stopWebcam()" id="stopBtn" disabled style="display:none;">
+                    ⏹ Stop Camera
+                </button>
+                <button class="btn btn-success" onclick="startRecording()" id="recordBtn" disabled>
+                    Start Recording (3-4 sec)
+                </button>
+                <button class="btn btn-danger" onclick="stopRecording()" id="stopBtn" disabled style="display:none;">
+                    Stop Recording
+                </button>
+            </div>
+
+            <div class="result-box" id="liveResult" style="display:none;">
+                <h3>Prediction Result:</h3>
+                <div class="prediction" id="livePrediction"></div>
+            </div>
+        </div>
+
+        <!-- Upload Mode -->
+        <div id="uploadMode" class="mode-content">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-content">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h3>Drop your video here</h3>
+                    <p>or click to browse</p>
+                    <p class="file-types">Supported formats: MP4, AVI, MOV</p>
+                    <input type="file" id="videoInput" accept="video/*" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+
+            <div class="video-preview" id="videoPreview" style="display:none;">
+                <video id="previewVideo" controls></video>
+                <button class="btn btn-primary" onclick="uploadVideo()">
+                    Analyze Video
+                </button>
+            </div>
+
+            <div class="result-box" id="uploadResult" style="display:none;">
+                <h3>Prediction Result:</h3>
+                <div class="prediction" id="uploadPrediction"></div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading" style="display:none;">
+            <div class="spinner"></div>
+            <p>Analyzing gesture...</p>
+        </div>
+
+        <div class="info-section">
+            <h3>Supported Gestures</h3>
+            <div class="gesture-cards">
+                <div class="gesture-card">
+                    <span class="gesture-icon">👋</span>
+                    <p>Hello</p>
+                </div>
+                <div class="gesture-card">
+                    <span class="gesture-icon">❓</span>
+                    <p>How are you</p>
+                </div>
+                <div class="gesture-card">
+                    <span class="gesture-icon">🙏</span>
+                    <p>Thank you</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        let stream;
+        let recordingStartTime;
+        let recordingTimer;
+
+        // Mode switching
+        function switchMode(mode) {
+            const liveMode = document.getElementById('liveMode');
+            const uploadMode = document.getElementById('uploadMode');
+            const liveBtn = document.getElementById('liveBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            if (mode === 'live') {
+                liveMode.classList.add('active');
+                uploadMode.classList.remove('active');
+                liveBtn.classList.add('active');
+                uploadBtn.classList.remove('active');
+            } else {
+                liveMode.classList.remove('active');
+                uploadMode.classList.add('active');
+                liveBtn.classList.remove('active');
+                uploadBtn.classList.add('active');
+            }
+        }
+
+        // Webcam functionality
+        async function startWebcam() {
+            try {
+                // Check if getUserMedia is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showNotification('Your browser does not support camera access. Please use Chrome, Firefox, or Edge.', 'error');
+                    return;
+                }
+
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    }, 
+                    audio: false 
+                });
+                document.getElementById('webcam').srcObject = stream;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('stopBtn').style.display = 'inline-block';
+                document.getElementById('recordBtn').disabled = false;
+                showNotification('Camera started successfully!', 'success');
+            } catch (error) {
+                handleCameraError(error);
+            }
+        }
+
+        function handleCameraError(error) {
+            let message = '';
+            let instructions = '';
+
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                message = 'Camera permission denied!';
+                instructions = `
+                    <div style="text-align: left; margin-top: 10px;">
+                        <strong>To enable camera access:</strong><br><br>
+                        <strong>Chrome/Edge:</strong><br>
+                        1. Click the 🔒 or camera icon in the address bar<br>
+                        2. Select "Allow" for camera<br>
+                        3. Refresh the page and try again<br><br>
+                        <strong>Firefox:</strong><br>
+                        1. Click the camera icon in the address bar<br>
+                        2. Select "Allow" and check "Remember this decision"<br>
+                        3. Try again<br><br>
+                        <strong>If you still have issues:</strong><br>
+                        • Go to browser Settings → Privacy & Security → Site Settings → Camera<br>
+                        • Make sure http://localhost:8000 is allowed
+                    </div>
+                `;
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                message = 'No camera found!';
+                instructions = 'Please connect a camera/webcam to your device and try again.';
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                message = 'Camera is already in use!';
+                instructions = 'Please close other applications using the camera and try again.';
+            } else {
+                message = 'Error accessing camera: ' + error.message;
+                instructions = 'Please check your camera permissions in browser settings.';
+            }
+
+            showCameraErrorModal(message, instructions);
+        }
+
+        function stopWebcam() {
+            // Stop all camera tracks completely
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            // Clear video element
+            const video = document.getElementById('webcam');
+            video.srcObject = null;
+            
+            // Reset UI to initial state
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('recordBtn').disabled = true;
+            
+            // Hide any active recording
+            document.getElementById('recordingIndicator').style.display = 'none';
+            
+            showNotification('Camera stopped', 'success');
+        }
+
+        function showCameraErrorModal(message, instructions) {
+            const modal = document.createElement('div');
+            modal.className = 'error-modal';
+            modal.innerHTML = `
+                <div class="error-modal-content">
+                    <span class="error-modal-close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+                    <h2>⚠️ ${message}</h2>
+                    <div class="error-instructions">${instructions}</div>
+                    <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Got it</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function startRecording() {
+            recordedChunks = [];
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                await processRecording(blob);
+            };
+
+            mediaRecorder.start();
+            document.getElementById('recordBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('recordingIndicator').style.display = 'flex';
+            
+            recordingStartTime = Date.now();
+            recordingTimer = setInterval(updateRecordingTime, 100);
+
+            // Auto-stop after 4 seconds
+            setTimeout(() => {
+                if (mediaRecorder.state === 'recording') {
+                    stopRecording();
+                }
+            }, 4000);
+        }
+
+        function updateRecordingTime() {
+            const elapsed = (Date.now() - recordingStartTime) / 1000;
+            document.getElementById('recordingTime').textContent = elapsed.toFixed(1) + 's';
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                document.getElementById('recordBtn').style.display = 'inline-block';
+                document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('recordingIndicator').style.display = 'none';
+                clearInterval(recordingTimer);
+            }
+        }
+
+        async function processRecording(blob) {
+            showLoading();
+            const formData = new FormData();
+            formData.append('file', blob, 'recording.webm');
+
+            try {
+                const response = await fetch('/upload-video/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    displayResult('liveResult', 'livePrediction', result);
+                } else {
+                    const error = await response.text();
+                    showNotification('Error: ' + error, 'error');
+                }
+            } catch (error) {
+                showNotification('Network error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+                document.getElementById('recordBtn').disabled = false;
+            }
+        }
+
+        // File upload functionality
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const videoPreview = document.getElementById('videoPreview');
+                const previewVideo = document.getElementById('previewVideo');
+                previewVideo.src = URL.createObjectURL(file);
+                videoPreview.style.display = 'block';
+                document.getElementById('uploadArea').style.display = 'none';
+            }
+        }
+
+        async function uploadVideo() {
+            const fileInput = document.getElementById('videoInput');
+            if (!fileInput.files[0]) {
+                showNotification('Please select a video file', 'error');
+                return;
+            }
+
+            showLoading();
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/upload-video/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    displayResult('uploadResult', 'uploadPrediction', result);
+                } else {
+                    const error = await response.text();
+                    showNotification('Error: ' + error, 'error');
+                }
+            } catch (error) {
+                showNotification('Network error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayResult(resultBoxId, predictionId, result) {
+            const resultBox = document.getElementById(resultBoxId);
+            const prediction = document.getElementById(predictionId);
+            
+            // Handle different result formats
+            let predictionText = '';
+            let detailsHTML = '';
+            
+            if (typeof result === 'string') {
+                predictionText = result;
+            } else if (result.prediction) {
+                predictionText = result.prediction;
+                
+                // Show confidence and all predictions
+                if (result.confidence) {
+                    detailsHTML += `<div class="confidence-score">Confidence: ${result.confidence}</div>`;
+                }
+                
+                if (result.all_predictions) {
+                    detailsHTML += '<div class="all-predictions"><h4>All Predictions:</h4>';
+                    for (const [gesture, prob] of Object.entries(result.all_predictions)) {
+                        const percentage = (prob * 100).toFixed(1);
+                        const barWidth = percentage;
+                        detailsHTML += `
+                            <div class="prediction-item">
+                                <span class="gesture-name">${gesture}</span>
+                                <div class="prediction-bar">
+                                    <div class="prediction-fill" style="width: ${barWidth}%"></div>
+                                    <span class="percentage">${percentage}%</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    detailsHTML += '</div>';
+                }
+            } else {
+                predictionText = JSON.stringify(result);
+            }
+            
+            prediction.innerHTML = `<div class="main-prediction">${predictionText}</div>${detailsHTML}`;
+            resultBox.style.display = 'block';
+            
+            // Animate the result
+            prediction.style.animation = 'none';
+            setTimeout(() => {
+                prediction.style.animation = 'scaleIn 0.5s ease';
+            }, 10);
+        }
+
+        // Drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('video/')) {
+                document.getElementById('videoInput').files = e.dataTransfer.files;
+                handleFileSelect({ target: { files: [file] } });
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            document.getElementById('videoInput').click();
+        });
+
+        // Utility functions
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
