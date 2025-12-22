@@ -30,7 +30,7 @@ app.add_middleware(
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-actions=np.array(["Hello","How are you","thank you"])
+actions=np.array(["Hello","How are you","thank you","alright","good morning","good afternoon"])
 
 def initialize_model():
     """ Initializes lstm model and loads the trained model weight  """
@@ -46,7 +46,7 @@ def initialize_model():
     print(model.summary())
     model.compile(optimizer = 'Adam',loss='categorical_crossentropy',metrics=['categorical_accuracy'])
 
-    model.load_weights(r"lstm-model\170-0.83.hdf5")
+    model.load_weights(r'lstm-model-6classes-best.hdf5')
 
     return model
 
@@ -80,7 +80,7 @@ async def upload_video(file: UploadFile = File(...)):
             out_np_array=convert_video_to_pose_embedded_np_array(temp.name,remove_input=False) #function to detect key points in each frame and return them as an numpy array.
     
             print(f"Input array shape: {out_np_array.shape}")
-            prediction=model.predict(np.expand_dims(out_np_array,axis=0))
+            prediction=model.predict(np.expand_dims(out_np_array,axis=0), verbose=0)
             print(f"Raw prediction probabilities: {prediction[0]}")
             arg_pred=np.argmax(prediction,axis=1)
             confidence = float(prediction[0][arg_pred[0]])
@@ -89,7 +89,33 @@ async def upload_video(file: UploadFile = File(...)):
             prediction_dict = {
                 actions[i]: float(prediction[0][i]) for i in range(len(actions))
             }
-            print(f"Predicted class: {actions[arg_pred[0]]} with confidence: {confidence}")
+            
+            # Sort predictions by confidence
+            sorted_predictions = sorted(prediction_dict.items(), key=lambda x: x[1], reverse=True)
+            print(f"Top 3 predictions:")
+            for i, (gesture, prob) in enumerate(sorted_predictions[:3]):
+                print(f"  {i+1}. {gesture}: {prob:.4f} ({prob*100:.1f}%)")
+            
+            predicted_gesture = actions[arg_pred[0]]
+            print(f"Final prediction: {predicted_gesture} with confidence: {confidence:.4f}")
+            
+            # Lower confidence threshold and add warning for low accuracy model
+            MIN_CONFIDENCE = 0.25
+            
+            if confidence < MIN_CONFIDENCE:
+                print(f"⚠️ Low confidence ({confidence:.2%}) - gesture not recognized clearly")
+                return JSONResponse(content={
+                    "prediction": "Gesture not recognized",
+                    "confidence": f"{confidence*100:.1f}%",
+                    "all_predictions": prediction_dict,
+                    "message": f"⚠️ Model accuracy is low (69%). Please perform the gesture more clearly. Minimum confidence: {MIN_CONFIDENCE*100:.0f}%",
+                    "warning": "This model needs more training data (100+ videos per gesture) for better accuracy."
+                })
+            
+            # Add warning for predictions between 25-50% confidence
+            warning_message = None
+            if confidence < 0.50:
+                warning_message = f"⚠️ Low confidence prediction. Model trained with limited data (21 videos per gesture). Recommended: 100+ videos for reliable predictions."
             
         except Exception as e:
             return JSONResponse(content={"error": f"Error processing video: {str(e)}"}, status_code=500)
@@ -105,7 +131,9 @@ async def upload_video(file: UploadFile = File(...)):
     return JSONResponse(content={
         "prediction": str(actions[arg_pred[0]]),
         "confidence": f"{confidence*100:.1f}%",
-        "all_predictions": prediction_dict
+        "all_predictions": prediction_dict,
+        "message": "Prediction successful!" if not warning_message else warning_message,
+        "warning": warning_message
     })
 
 @app.get("/test/")

@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 # Configuration
-GESTURES = ["Hello", "How are you", "thank you"]
+GESTURES = ["Hello", "How are you", "thank you", "alright", "good morning", "good afternoon"]
 VIDEOS_PER_GESTURE = 10  # Adjust this number
 OUTPUT_DIR = "training-data"
 VIDEO_DURATION = 3  # seconds

@@ -303,6 +303,28 @@ header h1 {
     font-weight: normal;
 }
 
+.warning-message {
+    font-size: 0.45em;
+    color: #f59e0b;
+    background: #fef3c7;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-weight: normal;
+    border-left: 4px solid #f59e0b;
+}
+
+.success-message {
+    font-size: 0.45em;
+    color: #10b981;
+    background: #d1fae5;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-weight: normal;
+    border-left: 4px solid #10b981;
+}
+
 .all-predictions {
     font-size: 0.4em;
     margin-top: 20px;

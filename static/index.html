@@ -301,23 +301,33 @@
             formData.append('file', blob, 'recording.webm');
 
             try {
+                console.log('Sending video to server...');
                 const response = await fetch('/upload-video/', {
                     method: 'POST',
                     body: formData
                 });
 
+                console.log('Response status:', response.status);
+
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('Result:', result);
                     displayResult('liveResult', 'livePrediction', result);
+                    showNotification('Prediction successful!', 'success');
                 } else {
-                    const error = await response.text();
-                    showNotification('Error: ' + error, 'error');
+                    const errorText = await response.text();
+                    console.error('Server error:', errorText);
+                    showNotification('Server error: ' + errorText, 'error');
                 }
             } catch (error) {
+                console.error('Fetch error:', error);
                 showNotification('Network error: ' + error.message, 'error');
             } finally {
                 hideLoading();
-                document.getElementById('recordBtn').disabled = false;
+                // Re-enable and show the record button for next recording
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.disabled = false;
+                recordBtn.style.display = 'inline-block';
             }
         }
 
@@ -376,6 +386,12 @@
                 predictionText = result;
             } else if (result.prediction) {
                 predictionText = result.prediction;
+                
+                // Show message if exists
+                if (result.message) {
+                    const messageClass = result.prediction === "Gesture not recognized" ? "warning-message" : "success-message";
+                    detailsHTML += `<div class="${messageClass}">${result.message}</div>`;
+                }
                 
                 // Show confidence and all predictions
                 if (result.confidence) {
