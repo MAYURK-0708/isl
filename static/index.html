@@ -3,356 +3,966 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indian Sign Language Recognition</title>
+    <meta name="description" content="Real-time Indian Sign Language Recognition - AI-powered system for live ISL translation with LSTM deep learning">
+    <meta name="keywords" content="Indian Sign Language, ISL, Sign Language Recognition, AI, Deep Learning, LSTM, Accessibility">
+    <meta name="author" content="ISL Recognition Team">
+    <title>ISL Recognition - Real-time Sign Language Translator</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤟</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🤟 Indian Sign Language Recognition</h1>
-            <p class="subtitle">Translate sign language gestures in real-time or upload a video</p>
-        </header>
-
-        <div class="mode-selector">
-            <button class="mode-btn active" onclick="switchMode('live')" id="liveBtn">
-                📹 Live Interaction
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-brand">
+            <span class="nav-logo">🤟</span>
+            <span class="nav-title">ISL Recognition</span>
+        </div>
+        <div class="nav-links" id="navLinks">
+            <a href="#realtime" class="nav-link active" data-section="realtime">Real-time</a>
+            <a href="#text-to-sign" class="nav-link" data-section="text-to-sign">Text to Sign</a>
+            <a href="#upload" class="nav-link" data-section="upload">Upload</a>
+            <a href="#learn" class="nav-link" data-section="learn">Learn</a>
+            <a href="#about" class="nav-link" data-section="about">About</a>
+        </div>
+        <div class="nav-actions">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode" aria-label="Toggle theme">
+                <span id="themeIcon">🌙</span>
             </button>
-            <button class="mode-btn" onclick="switchMode('upload')" id="uploadBtn">
-                📁 Upload Video
+            <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
             </button>
         </div>
+    </nav>
 
-        <!-- Live Interaction Mode -->
-        <div id="liveMode" class="mode-content active">
-            <div class="permission-notice">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                <span>Your browser will ask for camera permission when you click "Start Camera". Please click "Allow" to use the live interaction feature.</span>
+    <div class="container">
+        <!-- ===== REAL-TIME RECOGNITION SECTION ===== -->
+        <section id="realtime" class="main-section">
+            <div class="section-header">
+                <span class="section-badge">
+                    <span>🎥</span> Live Recognition
+                </span>
+                <h1>Real-time Sign Language Recognition</h1>
+                <p class="subtitle">Translate Indian Sign Language gestures to text instantly using AI-powered computer vision</p>
             </div>
-            
-            <div class="video-container">
-                <video id="webcam" autoplay playsinline></video>
-                <canvas id="canvas" style="display:none;"></canvas>
-                <div class="video-overlay" id="videoOverlay">
-                    <div class="recording-indicator" id="recordingIndicator" style="display:none;">
-                        <span class="recording-dot"></span>
-                        Recording... <span id="recordingTime">0s</span>
+
+            <div class="realtime-container">
+                <div class="video-section">
+                    <div class="video-wrapper">
+                        <video id="webcam" autoplay playsinline muted></video>
+                        <canvas id="canvas" style="display:none;"></canvas>
+
+                        <!-- Live overlay -->
+                        <div class="live-overlay">
+                            <div class="status-badge" id="statusBadge">
+                                <span class="status-dot"></span>
+                                <span id="statusText">Ready</span>
+                            </div>
+                            <div class="hands-indicator" id="handsIndicator" style="display:none;">
+                                ✋ Hands Detected
+                            </div>
+                        </div>
+
+                        <!-- Progress bar -->
+                        <div class="frame-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                            </div>
+                            <span class="progress-text" id="progressText">0/45 frames</span>
+                        </div>
+                    </div>
+
+                    <div class="camera-controls">
+                        <button class="btn btn-primary btn-lg" id="startBtn" onclick="startRealtime()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 7l-7 5 7 5V7z"></path>
+                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                            </svg>
+                            Start Recognition
+                        </button>
+                        <button class="btn btn-danger btn-lg" id="stopBtn" onclick="stopRealtime()" style="display:none;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="6" y="6" width="12" height="12"></rect>
+                            </svg>
+                            Stop Recognition
+                        </button>
+                        <button class="btn btn-secondary" id="resetBtn" onclick="resetBuffer()" style="display:none;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="1 4 1 10 7 10"></polyline>
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                            </svg>
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <div class="results-section">
+                    <div class="result-card">
+                        <h3>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            Live Prediction
+                        </h3>
+                        <div class="prediction-display">
+                            <span class="prediction-text" id="livePrediction">-</span>
+                            <span class="confidence-badge" id="liveConfidence">0%</span>
+                        </div>
+
+                        <div class="prediction-bars" id="predictionBars">
+                            <div class="bar-item">
+                                <span class="bar-label">Hello</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill" id="bar-hello" style="width: 0%"></div>
+                                </div>
+                                <span class="bar-value" id="val-hello">0%</span>
+                            </div>
+                            <div class="bar-item">
+                                <span class="bar-label">How are you</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill" id="bar-howareyou" style="width: 0%"></div>
+                                </div>
+                                <span class="bar-value" id="val-howareyou">0%</span>
+                            </div>
+                            <div class="bar-item">
+                                <span class="bar-label">Thank you</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill" id="bar-thankyou" style="width: 0%"></div>
+                                </div>
+                                <span class="bar-value" id="val-thankyou">0%</span>
+                            </div>
+                            <div class="bar-item">
+                                <span class="bar-label">Alright</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill" id="bar-alright" style="width: 0%"></div>
+                                </div>
+                                <span class="bar-value" id="val-alright">0%</span>
+                            </div>
+                            <div class="bar-item">
+                                <span class="bar-label">Good morning</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill" id="bar-goodmorning" style="width: 0%"></div>
+                                </div>
+                                <span class="bar-value" id="val-goodmorning">0%</span>
+                            </div>
+                            <div class="bar-item">
+                                <span class="bar-label">Good afternoon</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill" id="bar-goodafternoon" style="width: 0%"></div>
+                                </div>
+                                <span class="bar-value" id="val-goodafternoon">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Translation -->
+                        <div class="translation-box">
+                            <h4>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                </svg>
+                                Translate
+                            </h4>
+                            <div class="translation-row">
+                                <select id="langSelect" onchange="translateLive()">
+                                    <option value="en">🇺🇸 English</option>
+                                    <option value="hi">🇮🇳 Hindi</option>
+                                    <option value="es">🇪🇸 Spanish</option>
+                                    <option value="fr">🇫🇷 French</option>
+                                    <option value="de">🇩🇪 German</option>
+                                    <option value="pt">🇵🇹 Portuguese</option>
+                                </select>
+                                <span class="translated-text" id="translatedText">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="history-card">
+                        <h4>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            Recognition History
+                        </h4>
+                        <div class="history-list" id="historyList">
+                            <p class="empty-history">Predictions will appear here...</p>
+                        </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="controls">
-                <button class="btn btn-primary" onclick="startWebcam()" id="startBtn">
-                    Start Camera
-                </button>
-                <button class="btn btn-danger" onclick="stopWebcam()" id="stopBtn" disabled style="display:none;">
-                    ⏹ Stop Camera
-                </button>
-                <button class="btn btn-success" onclick="startRecording()" id="recordBtn" disabled>
-                    Start Recording (3-4 sec)
-                </button>
-                <button class="btn btn-danger" onclick="stopRecording()" id="stopBtn" disabled style="display:none;">
-                    Stop Recording
-                </button>
+
+            <!-- Tips -->
+            <div class="tips-banner">
+                <span class="tips-icon">💡</span>
+                <p><strong>Tips for best results:</strong> Ensure good lighting, position yourself in front of a plain background, keep your hands clearly visible in the frame, and perform gestures slowly and clearly for 2-3 seconds.</p>
+            </div>
+        </section>
+
+        <!-- ===== TEXT TO SIGN LANGUAGE SECTION ===== -->
+        <section id="text-to-sign" class="main-section" style="display:none;">
+            <div class="section-header">
+                <span class="section-badge">
+                    <span>📝</span> Text to Sign
+                </span>
+                <h2>Text to Sign Language</h2>
+                <p class="subtitle">Convert text into Indian Sign Language video demonstrations</p>
             </div>
 
-            <div class="result-box" id="liveResult" style="display:none;">
-                <h3>Prediction Result:</h3>
-                <div class="prediction" id="livePrediction"></div>
-            </div>
-        </div>
+            <div class="text-to-sign-container">
+                <div class="input-section">
+                    <div class="text-input-box">
+                        <label for="textInput">Enter text to convert:</label>
+                        <input type="text" id="textInput" placeholder="Type a phrase like 'Hello' or 'Thank you'"
+                               onkeypress="if(event.key==='Enter')convertToSign()">
+                        <button class="btn btn-primary" onclick="convertToSign()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="16 3 21 3 21 8"></polyline>
+                                <line x1="4" y1="20" x2="21" y2="3"></line>
+                                <polyline points="21 16 21 21 16 21"></polyline>
+                                <line x1="15" y1="15" x2="21" y2="21"></line>
+                                <line x1="4" y1="4" x2="9" y2="9"></line>
+                            </svg>
+                            Convert to Sign Language
+                        </button>
+                    </div>
 
-        <!-- Upload Mode -->
-        <div id="uploadMode" class="mode-content">
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-content">
-                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    <div class="available-phrases">
+                        <h4>Quick Phrases:</h4>
+                        <div class="phrase-tags">
+                            <span class="phrase-tag" onclick="setPhrase('Hello')">👋 Hello</span>
+                            <span class="phrase-tag" onclick="setPhrase('How are you')">❓ How are you</span>
+                            <span class="phrase-tag" onclick="setPhrase('thank you')">🙏 Thank you</span>
+                            <span class="phrase-tag" onclick="setPhrase('alright')">👌 Alright</span>
+                            <span class="phrase-tag" onclick="setPhrase('good morning')">🌅 Good morning</span>
+                            <span class="phrase-tag" onclick="setPhrase('good afternoon')">🌞 Good afternoon</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sign-video-section">
+                    <div class="sign-video-container" id="signVideoContainer">
+                        <div class="placeholder-message">
+                            <span>🤟</span>
+                            <p>Enter text above to see the sign language video</p>
+                        </div>
+                        <video id="signVideo" controls style="display:none;"></video>
+                    </div>
+                    <div class="sign-info" id="signInfo" style="display:none;">
+                        <p><strong>Gesture:</strong> <span id="gestureName">-</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions for adding videos -->
+            <div class="info-box">
+                <h4>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
-                    <h3>Drop your video here</h3>
-                    <p>or click to browse</p>
-                    <p class="file-types">Supported formats: MP4, AVI, MOV</p>
-                    <input type="file" id="videoInput" accept="video/*" onchange="handleFileSelect(event)">
+                    Adding Sign Language Videos
+                </h4>
+                <p>To add demonstration videos, place MP4 or WEBM files in the following folders:</p>
+                <code>sign_language_videos/hello/</code>
+                <code>sign_language_videos/thank_you/</code>
+                <code>sign_language_videos/how_are_you/</code>
+                <p style="margin-top:10px;">Each folder should contain at least one video file demonstrating that gesture.</p>
+            </div>
+        </section>
+
+        <!-- ===== UPLOAD VIDEO SECTION ===== -->
+        <section id="upload" class="main-section" style="display:none;">
+            <div class="section-header">
+                <span class="section-badge">
+                    <span>📁</span> Video Upload
+                </span>
+                <h2>Upload Video for Analysis</h2>
+                <p class="subtitle">Upload a pre-recorded video to recognize sign language gestures</p>
+            </div>
+
+            <div class="upload-container">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('videoInput').click()">
+                    <div class="upload-content">
+                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <h3>Drop your video here</h3>
+                        <p>or click to browse files</p>
+                        <span class="file-types">Supported: MP4, AVI, MOV, WEBM</span>
+                    </div>
+                    <input type="file" id="videoInput" accept="video/*" onchange="handleUpload(event)" style="display:none;">
+                </div>
+
+                <div class="video-preview" id="videoPreview" style="display:none;">
+                    <video id="previewVideo" controls></video>
+                    <div class="preview-actions">
+                        <button class="btn btn-secondary" onclick="resetUploadForm()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                            Choose Different
+                        </button>
+                        <button class="btn btn-primary" onclick="analyzeVideo()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            Analyze Video
+                        </button>
+                    </div>
+                </div>
+
+                <div class="upload-result" id="uploadResult" style="display:none;">
+                    <h3>Analysis Result</h3>
+                    <div class="result-content" id="uploadResultContent"></div>
+                    <div id="processedVideoSection" style="display:none; margin-top:20px;">
+                        <h4>Processed Video with Overlay:</h4>
+                        <video id="processedVideo" controls style="max-width:100%;"></video>
+                        <div style="margin-top: 1rem;">
+                            <a id="downloadBtn" class="btn btn-success" download>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Download Video
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== LEARN GESTURES SECTION ===== -->
+        <section id="learn" class="main-section" style="display:none;">
+            <div class="section-header">
+                <span class="section-badge">
+                    <span>📚</span> Learning Center
+                </span>
+                <h2>Learn Sign Language Gestures</h2>
+                <p class="subtitle">Master the gestures recognized by our AI system</p>
+            </div>
+
+            <div class="gesture-cards-section">
+                <div class="gesture-cards-grid">
+                    <div class="gesture-card">
+                        <span class="gesture-emoji">👋</span>
+                        <h4 class="gesture-name">Hello</h4>
+                        <p class="gesture-description">Wave your hand from side to side with your palm facing outward. Keep your fingers together and move your hand in a friendly waving motion.</p>
+                        <div class="gesture-steps" style="margin-top: 1rem; text-align: left;">
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;"><strong>Steps:</strong></p>
+                            <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.25rem;">
+                                <li>Raise your dominant hand to shoulder height</li>
+                                <li>Keep your palm facing outward</li>
+                                <li>Wave your hand side to side 2-3 times</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="gesture-card">
+                        <span class="gesture-emoji">❓</span>
+                        <h4 class="gesture-name">How are you</h4>
+                        <p class="gesture-description">Point to yourself, then extend your hand toward the other person with a questioning expression on your face.</p>
+                        <div class="gesture-steps" style="margin-top: 1rem; text-align: left;">
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;"><strong>Steps:</strong></p>
+                            <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.25rem;">
+                                <li>Point your index finger to your chest</li>
+                                <li>Extend both hands forward, palms up</li>
+                                <li>Show a questioning facial expression</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="gesture-card">
+                        <span class="gesture-emoji">🙏</span>
+                        <h4 class="gesture-name">Thank you</h4>
+                        <p class="gesture-description">Touch your chin or lips with your fingertips, then move your hand forward and down toward the person you're thanking.</p>
+                        <div class="gesture-steps" style="margin-top: 1rem; text-align: left;">
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;"><strong>Steps:</strong></p>
+                            <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.25rem;">
+                                <li>Touch your chin with fingertips</li>
+                                <li>Move your hand forward and downward</li>
+                                <li>End with palm facing up</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="gesture-card">
+                        <span class="gesture-emoji">👌</span>
+                        <h4 class="gesture-name">Alright</h4>
+                        <p class="gesture-description">Make an 'OK' sign with your thumb and index finger forming a circle, with other fingers extended upward.</p>
+                        <div class="gesture-steps" style="margin-top: 1rem; text-align: left;">
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;"><strong>Steps:</strong></p>
+                            <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.25rem;">
+                                <li>Touch thumb tip to index finger tip</li>
+                                <li>Extend other three fingers upward</li>
+                                <li>Hold hand at chest level</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="gesture-card">
+                        <span class="gesture-emoji">🌅</span>
+                        <h4 class="gesture-name">Good morning</h4>
+                        <p class="gesture-description">Sign 'good' followed by 'morning' - bring your flat hand from chin outward, then raise your arm upward like the sun rising.</p>
+                        <div class="gesture-steps" style="margin-top: 1rem; text-align: left;">
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;"><strong>Steps:</strong></p>
+                            <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.25rem;">
+                                <li>Place flat hand near chin</li>
+                                <li>Move hand forward (sign for 'good')</li>
+                                <li>Raise opposite arm upward (sunrise)</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="gesture-card">
+                        <span class="gesture-emoji">🌞</span>
+                        <h4 class="gesture-name">Good afternoon</h4>
+                        <p class="gesture-description">Similar to 'good morning' but the arm is held at a higher angle to represent the sun at midday.</p>
+                        <div class="gesture-steps" style="margin-top: 1rem; text-align: left;">
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;"><strong>Steps:</strong></p>
+                            <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.25rem;">
+                                <li>Place flat hand near chin</li>
+                                <li>Move hand forward (sign for 'good')</li>
+                                <li>Hold opposite arm horizontally (noon position)</li>
+                            </ol>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="video-preview" id="videoPreview" style="display:none;">
-                <video id="previewVideo" controls></video>
-                <button class="btn btn-primary" onclick="uploadVideo()">
-                    Analyze Video
-                </button>
+            <div class="tips-banner" style="margin-top: 2rem;">
+                <span class="tips-icon">🎯</span>
+                <p><strong>Practice Tips:</strong> Practice each gesture slowly in front of a mirror. Focus on clarity rather than speed. The AI works best when gestures are performed deliberately for 2-3 seconds.</p>
+            </div>
+        </section>
+
+        <!-- ===== ABOUT SECTION ===== -->
+        <section id="about" class="main-section" style="display:none;">
+            <div class="section-header">
+                <span class="section-badge">
+                    <span>ℹ️</span> About
+                </span>
+                <h2>About ISL Recognition</h2>
+                <p class="subtitle">AI-powered Indian Sign Language recognition system</p>
             </div>
 
-            <div class="result-box" id="uploadResult" style="display:none;">
-                <h3>Prediction Result:</h3>
-                <div class="prediction" id="uploadPrediction"></div>
-            </div>
-        </div>
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                            <rect x="9" y="9" width="6" height="6"></rect>
+                            <line x1="9" y1="1" x2="9" y2="4"></line>
+                            <line x1="15" y1="1" x2="15" y2="4"></line>
+                            <line x1="9" y1="20" x2="9" y2="23"></line>
+                            <line x1="15" y1="20" x2="15" y2="23"></line>
+                            <line x1="20" y1="9" x2="23" y2="9"></line>
+                            <line x1="20" y1="14" x2="23" y2="14"></line>
+                            <line x1="1" y1="9" x2="4" y2="9"></line>
+                            <line x1="1" y1="14" x2="4" y2="14"></line>
+                        </svg>
+                        Technology Stack
+                    </h3>
+                    <ul>
+                        <li><strong>LSTM Neural Network</strong> - 4-layer deep learning architecture</li>
+                        <li><strong>MediaPipe</strong> - Real-time pose and hand detection</li>
+                        <li><strong>FastAPI</strong> - High-performance Python backend</li>
+                        <li><strong>WebSocket</strong> - Real-time bidirectional communication</li>
+                        <li><strong>TensorFlow/Keras</strong> - Deep learning framework</li>
+                    </ul>
+                </div>
 
-        <div class="loading" id="loading" style="display:none;">
-            <div class="spinner"></div>
-            <p>Analyzing gesture...</p>
-        </div>
+                <div class="about-card">
+                    <h3>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        Model Performance
+                    </h3>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <span class="stat-value">83%</span>
+                            <span class="stat-label">Accuracy</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">258</span>
+                            <span class="stat-label">Keypoints</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">45</span>
+                            <span class="stat-label">Frames</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">3</span>
+                            <span class="stat-label">Gestures</span>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="info-section">
-            <h3>Supported Gestures</h3>
-            <div class="gesture-cards">
-                <div class="gesture-card">
-                    <span class="gesture-icon">👋</span>
-                    <p>Hello</p>
+                <div class="about-card">
+                    <h3>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        Supported Gestures
+                    </h3>
+                    <div class="gesture-list">
+                        <div class="gesture-item">👋 Hello - Greeting wave</div>
+                        <div class="gesture-item">❓ How are you - Inquiry gesture</div>
+                        <div class="gesture-item">🙏 Thank you - Gratitude expression</div>
+                    </div>
                 </div>
-                <div class="gesture-card">
-                    <span class="gesture-icon">❓</span>
-                    <p>How are you</p>
-                </div>
-                <div class="gesture-card">
-                    <span class="gesture-icon">🙏</span>
-                    <p>Thank you</p>
+
+                <div class="about-card">
+                    <h3>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                        Translation Languages
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Supports translation to 6 languages:</p>
+                    <div class="lang-flags">
+                        <span>🇺🇸 English</span>
+                        <span>🇮🇳 Hindi</span>
+                        <span>🇪🇸 Spanish</span>
+                        <span>🇫🇷 French</span>
+                        <span>🇩🇪 German</span>
+                        <span>🇵🇹 Portuguese</span>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Mission Statement -->
+            <div class="info-box" style="margin-top: 2rem;">
+                <h4>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    Our Mission
+                </h4>
+                <p>In India, there are approximately 5 million deaf individuals but only around 250 certified sign language interpreters - that's 1 interpreter for every 20,000 deaf people. Our mission is to bridge this communication gap using AI technology, enabling deaf individuals to communicate more easily with the hearing world without requiring a human interpreter.</p>
+            </div>
+        </section>
     </div>
 
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#realtime" onclick="navigateTo('realtime')">Real-time</a>
+            <a href="#learn" onclick="navigateTo('learn')">Learn Gestures</a>
+            <a href="#about" onclick="navigateTo('about')">About</a>
+        </div>
+        <p>ISL Recognition System - AI-powered Indian Sign Language Translation</p>
+        <p style="margin-top: 0.5rem; opacity: 0.7;">Built with TensorFlow, MediaPipe, and FastAPI</p>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+        <div class="spinner"></div>
+        <p id="loadingText">Processing...</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
     <script>
-        let mediaRecorder;
-        let recordedChunks = [];
-        let stream;
-        let recordingStartTime;
-        let recordingTimer;
+        // ===== GLOBALS =====
+        let websocket = null;
+        let stream = null;
+        let isRunning = false;
+        let frameInterval = null;
+        let currentPrediction = null;
+        let recognitionHistory = [];
 
-        // Mode switching
-        function switchMode(mode) {
-            const liveMode = document.getElementById('liveMode');
-            const uploadMode = document.getElementById('uploadMode');
-            const liveBtn = document.getElementById('liveBtn');
-            const uploadBtn = document.getElementById('uploadBtn');
+        // ===== NAVIGATION =====
+        function navigateTo(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.main-section').forEach(s => s.style.display = 'none');
 
-            if (mode === 'live') {
-                liveMode.classList.add('active');
-                uploadMode.classList.remove('active');
-                liveBtn.classList.add('active');
-                uploadBtn.classList.remove('active');
-            } else {
-                liveMode.classList.remove('active');
-                uploadMode.classList.add('active');
-                liveBtn.classList.remove('active');
-                uploadBtn.classList.add('active');
-            }
+            // Show target section
+            document.getElementById(sectionId).style.display = 'block';
+
+            // Update nav links
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector(`.nav-link[data-section="${sectionId}"]`)?.classList.add('active');
+
+            // Close mobile menu
+            document.getElementById('navLinks').classList.remove('active');
+            document.getElementById('mobileMenuBtn').classList.remove('active');
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Webcam functionality
-        async function startWebcam() {
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sectionId = link.getAttribute('data-section');
+                navigateTo(sectionId);
+            });
+        });
+
+        // ===== MOBILE MENU =====
+        function toggleMobileMenu() {
+            document.getElementById('navLinks').classList.toggle('active');
+            document.getElementById('mobileMenuBtn').classList.toggle('active');
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const navbar = document.getElementById('navbar');
+            if (!navbar.contains(e.target)) {
+                document.getElementById('navLinks').classList.remove('active');
+                document.getElementById('mobileMenuBtn').classList.remove('active');
+            }
+        });
+
+        // ===== THEME =====
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const icon = document.getElementById('themeIcon');
+            icon.textContent = document.body.classList.contains('dark-theme') ? '☀️' : '🌙';
+            localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
+        }
+
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-theme');
+            document.getElementById('themeIcon').textContent = '☀️';
+        }
+
+        // ===== SCROLL EFFECTS =====
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 20) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // ===== REAL-TIME RECOGNITION =====
+        async function startRealtime() {
             try {
-                // Check if getUserMedia is supported
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    showNotification('Your browser does not support camera access. Please use Chrome, Firefox, or Edge.', 'error');
-                    return;
-                }
-
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        facingMode: 'user'
-                    }, 
-                    audio: false 
+                // Get camera access
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'user' },
+                    audio: false
                 });
-                document.getElementById('webcam').srcObject = stream;
-                document.getElementById('startBtn').disabled = true;
-                document.getElementById('startBtn').style.display = 'none';
-                document.getElementById('stopBtn').disabled = false;
-                document.getElementById('stopBtn').style.display = 'inline-block';
-                document.getElementById('recordBtn').disabled = false;
-                showNotification('Camera started successfully!', 'success');
+
+                const video = document.getElementById('webcam');
+                video.srcObject = stream;
+
+                // Connect WebSocket
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                websocket = new WebSocket(`${protocol}//${window.location.host}/ws/realtime`);
+
+                websocket.onopen = () => {
+                    console.log('WebSocket connected');
+                    isRunning = true;
+                    updateUI(true);
+                    startFrameCapture();
+                    showToast('Real-time recognition started', 'success');
+                };
+
+                websocket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handlePrediction(data);
+                };
+
+                websocket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    showToast('Connection error', 'error');
+                };
+
+                websocket.onclose = () => {
+                    console.log('WebSocket closed');
+                    isRunning = false;
+                    updateUI(false);
+                };
+
             } catch (error) {
-                handleCameraError(error);
+                console.error('Error starting:', error);
+                showToast('Camera access denied or not available', 'error');
             }
         }
 
-        function handleCameraError(error) {
-            let message = '';
-            let instructions = '';
+        function stopRealtime() {
+            isRunning = false;
 
-            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                message = 'Camera permission denied!';
-                instructions = `
-                    <div style="text-align: left; margin-top: 10px;">
-                        <strong>To enable camera access:</strong><br><br>
-                        <strong>Chrome/Edge:</strong><br>
-                        1. Click the 🔒 or camera icon in the address bar<br>
-                        2. Select "Allow" for camera<br>
-                        3. Refresh the page and try again<br><br>
-                        <strong>Firefox:</strong><br>
-                        1. Click the camera icon in the address bar<br>
-                        2. Select "Allow" and check "Remember this decision"<br>
-                        3. Try again<br><br>
-                        <strong>If you still have issues:</strong><br>
-                        • Go to browser Settings → Privacy & Security → Site Settings → Camera<br>
-                        • Make sure http://localhost:8000 is allowed
-                    </div>
-                `;
-            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                message = 'No camera found!';
-                instructions = 'Please connect a camera/webcam to your device and try again.';
-            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-                message = 'Camera is already in use!';
-                instructions = 'Please close other applications using the camera and try again.';
-            } else {
-                message = 'Error accessing camera: ' + error.message;
-                instructions = 'Please check your camera permissions in browser settings.';
+            if (frameInterval) {
+                clearInterval(frameInterval);
+                frameInterval = null;
             }
 
-            showCameraErrorModal(message, instructions);
-        }
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
 
-        function stopWebcam() {
-            // Stop all camera tracks completely
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
             }
-            
-            // Clear video element
+
+            document.getElementById('webcam').srcObject = null;
+            updateUI(false);
+            showToast('Recognition stopped', 'success');
+        }
+
+        function startFrameCapture() {
             const video = document.getElementById('webcam');
-            video.srcObject = null;
-            
-            // Reset UI to initial state
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('startBtn').style.display = 'inline-block';
-            document.getElementById('stopBtn').disabled = true;
-            document.getElementById('stopBtn').style.display = 'none';
-            document.getElementById('recordBtn').disabled = true;
-            
-            // Hide any active recording
-            document.getElementById('recordingIndicator').style.display = 'none';
-            
-            showNotification('Camera stopped', 'success');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 640;
+            canvas.height = 480;
+
+            // Send frames every 100ms (10 FPS)
+            frameInterval = setInterval(() => {
+                if (!isRunning || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+                websocket.send(JSON.stringify({
+                    type: 'frame',
+                    data: imageData
+                }));
+            }, 100);
         }
 
-        function showCameraErrorModal(message, instructions) {
-            const modal = document.createElement('div');
-            modal.className = 'error-modal';
-            modal.innerHTML = `
-                <div class="error-modal-content">
-                    <span class="error-modal-close" onclick="this.parentElement.parentElement.remove()">&times;</span>
-                    <h2>⚠️ ${message}</h2>
-                    <div class="error-instructions">${instructions}</div>
-                    <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Got it</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            setTimeout(() => modal.classList.add('show'), 10);
-        }
+        function handlePrediction(data) {
+            if (data.type === 'prediction') {
+                // Update prediction display
+                document.getElementById('livePrediction').textContent = data.prediction;
+                document.getElementById('liveConfidence').textContent = data.confidence;
 
-        function startRecording() {
-            recordedChunks = [];
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    recordedChunks.push(event.data);
-                }
-            };
+                // Update progress bar
+                document.getElementById('progressBar').style.width = data.buffer_progress + '%';
+                document.getElementById('progressText').textContent = `${data.frames_collected}/45 frames`;
 
-            mediaRecorder.onstop = async () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                await processRecording(blob);
-            };
-
-            mediaRecorder.start();
-            document.getElementById('recordBtn').style.display = 'none';
-            document.getElementById('stopBtn').style.display = 'inline-block';
-            document.getElementById('recordingIndicator').style.display = 'flex';
-            
-            recordingStartTime = Date.now();
-            recordingTimer = setInterval(updateRecordingTime, 100);
-
-            // Auto-stop after 4 seconds
-            setTimeout(() => {
-                if (mediaRecorder.state === 'recording') {
-                    stopRecording();
-                }
-            }, 4000);
-        }
-
-        function updateRecordingTime() {
-            const elapsed = (Date.now() - recordingStartTime) / 1000;
-            document.getElementById('recordingTime').textContent = elapsed.toFixed(1) + 's';
-        }
-
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                document.getElementById('recordBtn').style.display = 'inline-block';
-                document.getElementById('stopBtn').style.display = 'none';
-                document.getElementById('recordingIndicator').style.display = 'none';
-                clearInterval(recordingTimer);
-            }
-        }
-
-        async function processRecording(blob) {
-            showLoading();
-            const formData = new FormData();
-            formData.append('file', blob, 'recording.webm');
-
-            try {
-                console.log('Sending video to server...');
-                const response = await fetch('/upload-video/', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                console.log('Response status:', response.status);
-
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Result:', result);
-                    displayResult('liveResult', 'livePrediction', result);
-                    showNotification('Prediction successful!', 'success');
+                // Update status
+                const statusBadge = document.getElementById('statusBadge');
+                const statusText = document.getElementById('statusText');
+                if (data.buffer_progress >= 100) {
+                    statusBadge.classList.add('active');
+                    statusText.textContent = 'Predicting';
                 } else {
-                    const errorText = await response.text();
-                    console.error('Server error:', errorText);
-                    showNotification('Server error: ' + errorText, 'error');
+                    statusBadge.classList.remove('active');
+                    statusText.textContent = 'Collecting';
                 }
-            } catch (error) {
-                console.error('Fetch error:', error);
-                showNotification('Network error: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-                // Re-enable and show the record button for next recording
-                const recordBtn = document.getElementById('recordBtn');
-                recordBtn.disabled = false;
-                recordBtn.style.display = 'inline-block';
+
+                // Show hands indicator
+                const handsIndicator = document.getElementById('handsIndicator');
+                handsIndicator.style.display = data.hands_detected ? 'flex' : 'none';
+
+                // Update prediction bars
+                if (data.all_predictions && Object.keys(data.all_predictions).length > 0) {
+                    updatePredictionBars(data.all_predictions);
+                }
+
+                // Add to history if prediction changed
+                if (data.prediction && data.prediction !== 'Collecting frames...' &&
+                    data.prediction !== currentPrediction) {
+                    currentPrediction = data.prediction;
+                    addToHistory(data.prediction, data.confidence);
+                    translateLive();
+                }
             }
         }
 
-        // File upload functionality
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const videoPreview = document.getElementById('videoPreview');
-                const previewVideo = document.getElementById('previewVideo');
-                previewVideo.src = URL.createObjectURL(file);
-                videoPreview.style.display = 'block';
-                document.getElementById('uploadArea').style.display = 'none';
+        function updatePredictionBars(predictions) {
+            // Hello
+            const helloVal = (predictions['Hello'] || 0) * 100;
+            document.getElementById('bar-hello').style.width = helloVal + '%';
+            document.getElementById('val-hello').textContent = helloVal.toFixed(1) + '%';
+
+            // How are you
+            const howVal = (predictions['How are you'] || 0) * 100;
+            document.getElementById('bar-howareyou').style.width = howVal + '%';
+            document.getElementById('val-howareyou').textContent = howVal.toFixed(1) + '%';
+
+            // Thank you
+            const thankVal = (predictions['thank you'] || 0) * 100;
+            document.getElementById('bar-thankyou').style.width = thankVal + '%';
+            document.getElementById('val-thankyou').textContent = thankVal.toFixed(1) + '%';
+
+            // Alright
+            const alrightVal = (predictions['alright'] || 0) * 100;
+            document.getElementById('bar-alright').style.width = alrightVal + '%';
+            document.getElementById('val-alright').textContent = alrightVal.toFixed(1) + '%';
+
+            // Good morning
+            const morningVal = (predictions['good morning'] || 0) * 100;
+            document.getElementById('bar-goodmorning').style.width = morningVal + '%';
+            document.getElementById('val-goodmorning').textContent = morningVal.toFixed(1) + '%';
+
+            // Good afternoon
+            const afternoonVal = (predictions['good afternoon'] || 0) * 100;
+            document.getElementById('bar-goodafternoon').style.width = afternoonVal + '%';
+            document.getElementById('val-goodafternoon').textContent = afternoonVal.toFixed(1) + '%';
+        }
+
+        function addToHistory(prediction, confidence) {
+            const historyList = document.getElementById('historyList');
+            const emptyMsg = historyList.querySelector('.empty-history');
+            if (emptyMsg) emptyMsg.remove();
+
+            const time = new Date().toLocaleTimeString();
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `
+                <span class="history-text">${prediction}</span>
+                <span class="history-conf">${confidence}</span>
+                <span class="history-time">${time}</span>
+            `;
+            historyList.insertBefore(item, historyList.firstChild);
+
+            // Keep only last 10
+            while (historyList.children.length > 10) {
+                historyList.removeChild(historyList.lastChild);
             }
         }
 
-        async function uploadVideo() {
-            const fileInput = document.getElementById('videoInput');
-            if (!fileInput.files[0]) {
-                showNotification('Please select a video file', 'error');
+        function resetBuffer() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'reset' }));
+                document.getElementById('progressBar').style.width = '0%';
+                document.getElementById('progressText').textContent = '0/45 frames';
+                document.getElementById('livePrediction').textContent = '-';
+                document.getElementById('liveConfidence').textContent = '0%';
+                
+                // Reset all prediction bars
+                const gestures = ['hello', 'howareyou', 'thankyou', 'alright', 'goodmorning', 'goodafternoon'];
+                gestures.forEach(g => {
+                    document.getElementById('bar-' + g).style.width = '0%';
+                    document.getElementById('val-' + g).textContent = '0%';
+                });
+                
+                showToast('Buffer reset', 'success');
+            }
+        }
+
+        function updateUI(running) {
+            document.getElementById('startBtn').style.display = running ? 'none' : 'inline-flex';
+            document.getElementById('stopBtn').style.display = running ? 'inline-flex' : 'none';
+            document.getElementById('resetBtn').style.display = running ? 'inline-flex' : 'none';
+        }
+
+        async function translateLive() {
+            if (!currentPrediction) return;
+
+            const lang = document.getElementById('langSelect').value;
+            try {
+                const response = await fetch('/translate/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: currentPrediction, language: lang })
+                });
+                const data = await response.json();
+                document.getElementById('translatedText').textContent = data.translated || data.original;
+            } catch (e) {
+                console.error('Translation error:', e);
+            }
+        }
+
+        // ===== TEXT TO SIGN =====
+        function setPhrase(phrase) {
+            document.getElementById('textInput').value = phrase;
+            convertToSign();
+        }
+
+        async function convertToSign() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                showToast('Please enter some text', 'error');
                 return;
             }
 
-            showLoading();
+            showLoading('Finding sign language video...');
+
+            try {
+                const response = await fetch('/text-to-sign/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                if (data.video_url) {
+                    const video = document.getElementById('signVideo');
+                    video.src = data.video_url;
+                    video.style.display = 'block';
+                    video.play();
+
+                    document.querySelector('#signVideoContainer .placeholder-message').style.display = 'none';
+                    document.getElementById('signInfo').style.display = 'block';
+                    document.getElementById('gestureName').textContent = data.gesture;
+                } else {
+                    showToast(data.error || 'No video found for this phrase', 'error');
+                    if (data.instruction) {
+                        setTimeout(() => showToast(data.instruction, 'info'), 2000);
+                    }
+                }
+            } catch (e) {
+                hideLoading();
+                showToast('Error: ' + e.message, 'error');
+            }
+        }
+
+        // ===== VIDEO UPLOAD =====
+        function handleUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const video = document.getElementById('previewVideo');
+                video.src = URL.createObjectURL(file);
+                document.getElementById('uploadArea').style.display = 'none';
+                document.getElementById('videoPreview').style.display = 'block';
+            }
+        }
+
+        function resetUploadForm() {
+            document.getElementById('videoInput').value = '';
+            document.getElementById('uploadArea').style.display = 'block';
+            document.getElementById('videoPreview').style.display = 'none';
+            document.getElementById('uploadResult').style.display = 'none';
+        }
+
+        async function analyzeVideo() {
+            const fileInput = document.getElementById('videoInput');
+            if (!fileInput.files[0]) {
+                showToast('Please select a video', 'error');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const fileSize = (file.size / (1024 * 1024)).toFixed(2); // Size in MB
+            
+            console.log(`Uploading: ${file.name} (${fileSize} MB)`);
+            showLoading(`Analyzing video... This may take a few seconds (${fileSize} MB)`);
+
             const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', file);
 
             try {
                 const response = await fetch('/upload-video/', {
@@ -360,125 +970,109 @@
                     body: formData
                 });
 
-                if (response.ok) {
-                    const result = await response.json();
-                    displayResult('uploadResult', 'uploadPrediction', result);
-                } else {
-                    const error = await response.text();
-                    showNotification('Error: ' + error, 'error');
-                }
-            } catch (error) {
-                showNotification('Network error: ' + error.message, 'error');
-            } finally {
+                const data = await response.json();
                 hideLoading();
-            }
-        }
 
-        function displayResult(resultBoxId, predictionId, result) {
-            const resultBox = document.getElementById(resultBoxId);
-            const prediction = document.getElementById(predictionId);
-            
-            // Handle different result formats
-            let predictionText = '';
-            let detailsHTML = '';
-            
-            if (typeof result === 'string') {
-                predictionText = result;
-            } else if (result.prediction) {
-                predictionText = result.prediction;
-                
-                // Show message if exists
-                if (result.message) {
-                    const messageClass = result.prediction === "Gesture not recognized" ? "warning-message" : "success-message";
-                    detailsHTML += `<div class="${messageClass}">${result.message}</div>`;
-                }
-                
-                // Show confidence and all predictions
-                if (result.confidence) {
-                    detailsHTML += `<div class="confidence-score">Confidence: ${result.confidence}</div>`;
-                }
-                
-                if (result.all_predictions) {
-                    detailsHTML += '<div class="all-predictions"><h4>All Predictions:</h4>';
-                    for (const [gesture, prob] of Object.entries(result.all_predictions)) {
-                        const percentage = (prob * 100).toFixed(1);
-                        const barWidth = percentage;
-                        detailsHTML += `
-                            <div class="prediction-item">
-                                <span class="gesture-name">${gesture}</span>
-                                <div class="prediction-bar">
-                                    <div class="prediction-fill" style="width: ${barWidth}%"></div>
-                                    <span class="percentage">${percentage}%</span>
-                                </div>
-                            </div>
-                        `;
+                if (data.prediction) {
+                    document.getElementById('uploadResult').style.display = 'block';
+                    
+                    // Show all top predictions
+                    let allPredictionsHtml = '';
+                    if (data.all_predictions) {
+                        const sorted = Object.entries(data.all_predictions)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 3);
+                        
+                        allPredictionsHtml = '<div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">';
+                        allPredictionsHtml += '<strong>Top predictions:</strong><br>';
+                        sorted.forEach(([gesture, conf], idx) => {
+                            allPredictionsHtml += `${idx + 1}. ${gesture}: ${(conf * 100).toFixed(1)}%<br>`;
+                        });
+                        allPredictionsHtml += '</div>';
                     }
-                    detailsHTML += '</div>';
+                    
+                    const warningHtml = data.warning ? 
+                        `<div style="margin-top: 1rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); border-radius: 8px; font-size: 0.9rem;">${data.warning}</div>` : '';
+                    
+                    document.getElementById('uploadResultContent').innerHTML = `
+                        <div class="result-prediction">${data.prediction}</div>
+                        <div class="result-confidence">Confidence: ${data.confidence}</div>
+                        ${allPredictionsHtml}
+                        ${warningHtml}
+                    `;
+
+                    if (data.processed_video) {
+                        document.getElementById('processedVideoSection').style.display = 'block';
+                        document.getElementById('processedVideo').src = data.processed_video;
+                        document.getElementById('downloadBtn').href = data.processed_video;
+                    }
+
+                    showToast(data.message || 'Analysis complete!', 'success');
+                } else {
+                    const errorMsg = data.error || 'Analysis failed';
+                    const detailMsg = data.message || '';
+                    showToast(errorMsg, 'error');
+                    
+                    if (detailMsg) {
+                        setTimeout(() => showToast(detailMsg, 'info'), 2000);
+                    }
                 }
-            } else {
-                predictionText = JSON.stringify(result);
+            } catch (e) {
+                hideLoading();
+                console.error('Upload error:', e);
+                showToast('Network error: ' + e.message, 'error');
             }
-            
-            prediction.innerHTML = `<div class="main-prediction">${predictionText}</div>${detailsHTML}`;
-            resultBox.style.display = 'block';
-            
-            // Animate the result
-            prediction.style.animation = 'none';
-            setTimeout(() => {
-                prediction.style.animation = 'scaleIn 0.5s ease';
-            }, 10);
         }
 
         // Drag and drop
         const uploadArea = document.getElementById('uploadArea');
-        
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
         });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('video/')) {
+            if (e.dataTransfer.files[0]) {
                 document.getElementById('videoInput').files = e.dataTransfer.files;
-                handleFileSelect({ target: { files: [file] } });
+                handleUpload({ target: { files: e.dataTransfer.files } });
             }
         });
 
-        uploadArea.addEventListener('click', () => {
-            document.getElementById('videoInput').click();
-        });
-
-        // Utility functions
-        function showLoading() {
-            document.getElementById('loading').style.display = 'flex';
+        // ===== UTILITIES =====
+        function showLoading(text = 'Processing...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').style.display = 'flex';
         }
 
         function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
+            document.getElementById('loadingOverlay').style.display = 'none';
         }
 
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 5000);
         }
+
+        // ===== KEYBOARD SHORTCUTS =====
+        document.addEventListener('keydown', (e) => {
+            // Escape to stop recognition
+            if (e.key === 'Escape' && isRunning) {
+                stopRealtime();
+            }
+            // Space to start/stop (when not in input field)
+            if (e.key === ' ' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+                if (isRunning) {
+                    stopRealtime();
+                } else {
+                    startRealtime();
+                }
+            }
+        });
     </script>
 </body>
 </html>

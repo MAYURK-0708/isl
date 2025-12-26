@@ -77,6 +77,9 @@ def convert_video_to_pose_embedded_np_array(pather,remove_input=False):
     actualframe=len(videodata)
     print(f"Total frames in video: {actualframe}")
     
+    frames_with_detections = 0
+    frames_without_detections = 0
+    
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
      
      if actualframe >=45:
@@ -89,7 +92,17 @@ def convert_video_to_pose_embedded_np_array(pather,remove_input=False):
                 frame =videodata[x]             
                 image,results = mediapipe_detection(frame,holistic) #applying mediapipe model
                 keypoints = extract_keypoints(results) #concatanates body , left hand , right hand points.
+                
+                # Check if any keypoints were detected
+                if results.pose_landmarks or results.left_hand_landmarks or results.right_hand_landmarks:
+                    frames_with_detections += 1
+                else:
+                    frames_without_detections += 1
+                
                 np_array.append(keypoints) # save as a single numpy array
+              
+              print(f"Frames with detections: {frames_with_detections}/{45}")
+              print(f"Frames without detections: {frames_without_detections}/{45}")
                     
                     
      else:
@@ -98,10 +111,21 @@ def convert_video_to_pose_embedded_np_array(pather,remove_input=False):
                   frame=videodata[i]
                   image,results = mediapipe_detection(frame,holistic) #applying mediapipe model
                   keypoints = extract_keypoints(results) #concatanates body , left hand , right hand points.
+                  
+                  # Check if any keypoints were detected
+                  if results.pose_landmarks or results.left_hand_landmarks or results.right_hand_landmarks:
+                      frames_with_detections += 1
+                  else:
+                      frames_without_detections += 1
                   np_array.append(keypoints)
         
+              print(f"Frames with detections: {frames_with_detections}/{actualframe}")
+              print(f"Frames without detections: {frames_without_detections}/{actualframe}")
+              
               for i in range(45-actualframe):
                   np_array.append(np.zeros(key_points_shape)) # add empty frames at end to keep array size same.
+              
+              print(f"Added {45-actualframe} empty padding frames")
     
      np.save("np_array_0",np_array)
 
